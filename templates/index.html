@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>PDF Redaction</title>
+  </head>
+  <body>
+    <h1>Upload PDF for Redaction</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+      <label for="file">Select PDF file:</label>
+      <input type="file" id="file" name="file" accept=".pdf" required><br><br>
+      <input type="submit" value="Upload and Redact">
+    </form>
+  </body>
+</html>
