@@ -1,10 +1,10 @@
-from flask import Flask, request, render_template, send_file, redirect
+from flask import Flask, request, render_template, send_file, redirect, url_for, session
 import fitz  # PyMuPDF
 import os
 import convertapi
 
 app = Flask(__name__)
-
+app.secret_key ='your_secret_key'
 # Configuration
 app.config['UPLOAD_FOLDER'] = 'static'
 app.config['ALLOWED_EXTENSIONS'] = {'pdf'}
@@ -57,7 +57,9 @@ KEYWORDS = {
     'Microsoft Ireland': {'left_adjustment': 50, 'right_adjustment': 450, 'times': 4, 'pages': [0, 1, 2, 3], 'color': (1, 1, 1)},
     '(Amount in EUR)': {'left_adjustment': 5, 'right_adjustment': 5, 'times': 1, 'pages': [0], 'color': (1, 1, 1)},
     'EUR': {'left_adjustment': 5, 'right_adjustment': 45, 'times': 1, 'pages': [0], 'color': (1, 1, 1)},
-    '0.00': {'left_adjustment': 5, 'right_adjustment': 45, 'times': 1, 'pages': [0], 'color': (1, 1, 1)},
+    '0.00': {'left_adjustment': 5, 'right_adjustment': 45, 'times': 2, 'pages': [0], 'color': (1, 1, 1)},
+    'VAT @0%':{'left_adjustment': 5, 'right_adjustment': 45, 'times': 1, 'pages': [0], 'color': (1, 1, 1)},
+    'Export of services':{'left_adjustment': 5, 'right_adjustment': 45, 'times': 1, 'pages': [0], 'color': (1, 1, 1)},
     'Charges': {'left_adjustment': -40, 'right_adjustment': 400, 'times': 1, 'pages': [0], 'color': (1, 1, 1)},
     'LESS: Commitment Usage':{'left_adjustment': -100, 'right_adjustment': 300, 'times': 1, 'pages': [0], 'color': (1, 1, 1)},
     'Net Amount': {'left_adjustment': -50, 'right_adjustment': 300, 'times': 1, 'pages': [0], 'color': (1, 1, 1)}
@@ -68,6 +70,7 @@ def allowed_file(filename):
 
 @app.route('/')
 def index():
+    session.pop('uploaded', None)
     return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
@@ -90,7 +93,9 @@ def upload_file():
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'output_with_logo.pdf')
         add_logo_to_pdf(redacted_path, app.config['LOGO_PATH'], output_path)
         
-        return render_template('result.html', redacted_file='static/output_with_logo.pdf')
+        session['uploaded'] = True
+
+        return redirect(url_for('result'))
     return redirect(request.url)
 
 def redact_pdf(file_path, keywords, redacted_path):
@@ -129,7 +134,7 @@ def add_logo_to_pdf(input_pdf_path, logo_path, output_pdf_path):
         
         # Calculate the position for the logo (center bottom)
         x0 = (page_rect.width - logo_width) / 2  # Center horizontally
-        y0 = page_rect.height - logo_height - 60  # Bottom with a 50-point margin
+        y0 = page_rect.height - logo_height - 60  # Bottom with a 60-point margin
 
         # Insert the logo image into the page
         page.insert_image(
@@ -143,6 +148,14 @@ def add_logo_to_pdf(input_pdf_path, logo_path, output_pdf_path):
 @app.route('/download')
 def download_file():
     return send_file('static/output_with_logo.pdf', as_attachment=True)
+
+@app.route('/result')
+def result():
+    #Check if a file has been uploaded 
+    if not session.get('uploaded'):
+        return redirect(url_for('index'))
+    #Render a result page or perform actions as needed
+    return render_template('result.html', redacted_file=url_for('static', filename='output_with_logo.pdf'))
     
 if __name__ == '__main__':
     app.run(debug=True)
